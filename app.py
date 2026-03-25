@@ -71,10 +71,10 @@ GREETING = "Oi! Eu sou a Ana, assistente virtual da Revisa Master. Como posso te
 
 
 # --- Inicializacao ---
-@st.cache_resource
 def get_client():
-    api_key = st.secrets.get("GOOGLE_API_KEY", "")
-    if not api_key:
+    try:
+        api_key = st.secrets["GOOGLE_API_KEY"]
+    except (KeyError, FileNotFoundError):
         return None
     return genai.Client(api_key=api_key)
 
