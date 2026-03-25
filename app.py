@@ -54,10 +54,6 @@ Lead: "Oi, vi voces no Instagram. Preciso de ajuda com minha dissertacao."
 Ana: "Oi! Que bom que nos encontrou! Fico feliz em ajudar. Me conta, voce esta no mestrado ou doutorado?"
 Lead: "Mestrado em administracao."
 Ana: "Que legal! E qual e a sua maior dificuldade agora? Precisa de revisao ABNT, ajuda com a escrita, ou orientacao geral sobre a dissertacao?"
-Lead: "Meu orientador pediu pra revisar toda a formatacao ABNT."
-Ana: "Entendo, isso e bem comum! Nossa equipe de mestres e doutores faz a revisao ABNT completa. Voce tem prazo pra entregar?"
-Lead: "Preciso entregar em 2 semanas."
-Ana: "Da tempo sim! Para te passar um orcamento personalizado, me chama no WhatsApp: +55 19 99539-2568. A equipe responde em ate 1 dia util. Posso ajudar em mais alguma coisa?"
 
 Exemplo 2:
 Lead: "Quanto custa a revisao?"
@@ -66,11 +62,12 @@ Ana: "O valor depende do tamanho e tipo do trabalho, por isso fazemos orcamentos
 ### REGRAS ###
 - NUNCA invente precos ou valores. Sempre direcione para orcamento personalizado.
 - NUNCA prometa prazos especificos de entrega sem consulta da equipe.
-- Se o lead perguntar algo fora do escopo (ex: conteudo tecnico da pesquisa), diga que
-  a equipe de mentores pode ajudar e direcione para o WhatsApp.
+- Se o lead perguntar algo fora do escopo, direcione para o WhatsApp.
 - Se o lead nao quiser informar dados, respeite e ofereca o WhatsApp como alternativa.
 - Sempre encerre com uma opcao de proximo passo (WhatsApp, email ou site).
 """
+
+GREETING = "Oi! Eu sou a Ana, assistente virtual da Revisa Master. Como posso te ajudar hoje?"
 
 
 # --- Inicializacao ---
@@ -98,12 +95,10 @@ for msg in st.session_state.messages:
     with st.chat_message(role):
         st.markdown(msg["content"])
 
-# Mensagem inicial da Ana
+# Mensagem inicial da Ana (so exibe na UI, nao vai pro historico da API)
 if not st.session_state.messages:
-    greeting = "Oi! Eu sou a Ana, assistente virtual da Revisa Master. Como posso te ajudar hoje?"
     with st.chat_message("assistant"):
-        st.markdown(greeting)
-    st.session_state.messages.append({"role": "model", "content": greeting})
+        st.markdown(GREETING)
 
 # Input do usuario
 if prompt := st.chat_input("Digite sua mensagem..."):
@@ -116,10 +111,10 @@ if prompt := st.chat_input("Digite sua mensagem..."):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Monta historico para a API do Gemini
-    gemini_history = []
-    for msg in st.session_state.messages[:-1]:  # exclui a mensagem atual
-        gemini_history.append(
+    # Monta historico para a API (apenas mensagens anteriores, alternando user/model)
+    gemini_contents = []
+    for msg in st.session_state.messages:
+        gemini_contents.append(
             types.Content(
                 role=msg["role"],
                 parts=[types.Part.from_text(text=msg["content"])],
@@ -129,22 +124,21 @@ if prompt := st.chat_input("Digite sua mensagem..."):
     # Chama a API do Gemini
     with st.chat_message("assistant"):
         with st.spinner("Digitando..."):
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=gemini_history + [
-                    types.Content(
-                        role="user",
-                        parts=[types.Part.from_text(text=prompt)],
-                    )
-                ],
-                config=types.GenerateContentConfig(
-                    temperature=0.3,
-                    top_p=0.95,
-                    top_k=20,
-                    system_instruction=SYSTEM_PROMPT,
-                ),
-            )
-            reply = response.text
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=gemini_contents,
+                    config=types.GenerateContentConfig(
+                        temperature=0.3,
+                        top_p=0.95,
+                        top_k=20,
+                        system_instruction=SYSTEM_PROMPT,
+                    ),
+                )
+                reply = response.text
+            except Exception as e:
+                reply = f"Desculpe, ocorreu um erro. Tente novamente ou entre em contato pelo WhatsApp: +55 19 99539-2568"
+                st.error(f"Erro: {e}")
             st.markdown(reply)
 
     st.session_state.messages.append({"role": "model", "content": reply})
