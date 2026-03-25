@@ -1,5 +1,6 @@
 import streamlit as st
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 # --- Configuracao da pagina ---
 st.set_page_config(
@@ -75,10 +76,10 @@ Ana: "O valor depende do tamanho e tipo do trabalho, por isso fazemos orcamentos
 # --- Inicializacao ---
 @st.cache_resource
 def get_client():
-    api_key = st.secrets.get("OPENAI_API_KEY", "")
+    api_key = st.secrets.get("GOOGLE_API_KEY", "")
     if not api_key:
         return None
-    return OpenAI(api_key=api_key)
+    return genai.Client(api_key=api_key)
 
 
 client = get_client()
@@ -93,7 +94,8 @@ st.caption("Assistente virtual de atendimento")
 
 # Exibe historico
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    role = "assistant" if msg["role"] == "model" else msg["role"]
+    with st.chat_message(role):
         st.markdown(msg["content"])
 
 # Mensagem inicial da Ana
@@ -101,12 +103,12 @@ if not st.session_state.messages:
     greeting = "Oi! Eu sou a Ana, assistente virtual da Revisa Master. Como posso te ajudar hoje?"
     with st.chat_message("assistant"):
         st.markdown(greeting)
-    st.session_state.messages.append({"role": "assistant", "content": greeting})
+    st.session_state.messages.append({"role": "model", "content": greeting})
 
 # Input do usuario
 if prompt := st.chat_input("Digite sua mensagem..."):
     if not client:
-        st.error("Chave da OpenAI nao configurada. Adicione OPENAI_API_KEY nos Secrets do Streamlit Cloud.")
+        st.error("Chave do Google AI nao configurada. Adicione GOOGLE_API_KEY nos Secrets do Streamlit Cloud.")
         st.stop()
 
     # Mostra mensagem do usuario
@@ -114,22 +116,38 @@ if prompt := st.chat_input("Digite sua mensagem..."):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Monta historico para a API
-    api_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    api_messages.extend(st.session_state.messages)
+    # Monta historico para a API do Gemini
+    gemini_history = []
+    for msg in st.session_state.messages[:-1]:  # exclui a mensagem atual
+        gemini_history.append(
+            types.Content(
+                role=msg["role"],
+                parts=[types.Part.from_text(text=msg["content"])],
+            )
+        )
 
-    # Chama a API
+    # Chama a API do Gemini
     with st.chat_message("assistant"):
         with st.spinner("Digitando..."):
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=api_messages,
-                temperature=0.3,
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=gemini_history + [
+                    types.Content(
+                        role="user",
+                        parts=[types.Part.from_text(text=prompt)],
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    temperature=0.3,
+                    top_p=0.95,
+                    top_k=20,
+                    system_instruction=SYSTEM_PROMPT,
+                ),
             )
-            reply = response.choices[0].message.content
+            reply = response.text
             st.markdown(reply)
 
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.messages.append({"role": "model", "content": reply})
 
 # --- Sidebar ---
 with st.sidebar:
