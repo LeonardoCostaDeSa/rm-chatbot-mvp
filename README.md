@@ -10,6 +10,7 @@ Os notebooks desse repositório foram testados com os seguintes softwares:
 - VSCode (Visual Studio Code)
 - Extensão Jupyter para VSCode
 - Pacote `google-genai` instalado (substitui OpenAI)
+- Pacote `openai` instalado (usado no chatbot)
 - Git para gerenciar o repositório
 
 ## Passo-a-passo para execução local
@@ -26,7 +27,7 @@ Os notebooks desse repositório foram testados com os seguintes softwares:
    ```
 3. **Instalar dependências:**
    ```bash
-   pip install google-genai
+   pip install -r requirements.txt
    ```
 4. **Abrir o VSCode e instalar a extensão Jupyter:**
    - Busque por "Jupyter" na aba de extensões e instale.
@@ -34,6 +35,18 @@ Os notebooks desse repositório foram testados com os seguintes softwares:
    - Abra os arquivos `.ipynb` no VSCode.
    - No canto superior direito do notebook, selecione como Kernel o Python do venv criado no Passo 2.
    - Execute célula por célula para testar os exemplos.
+
+## Chatbot Revisa Master
+
+O notebook `chatbot_revisa_master.ipynb` implementa um chatbot de atendimento ao cliente para a **Revisa Master**, aplicando as tecnicas de prompt engineering ensinadas nos notebooks do curso.
+
+**Funcionalidades:**
+- Qualificacao de leads frios vindos do Instagram
+- Identificacao de etapa academica e necessidade do lead
+- Direcionamento para agendamento via WhatsApp
+- Extracao automatica de dados do lead em JSON
+
+**Modelo:** OpenAI GPT (gpt-4o-mini). Requer a variavel `OPENAI_API_KEY` no arquivo `.env`.
 
 ## Agradecimentos
 
